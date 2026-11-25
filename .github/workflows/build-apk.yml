@@ -8,16 +8,16 @@ on:
         required: true
         default: 'dev'
         type: string
-      app:
+      app_variant:
         description: 'App variant to build'
         required: true
         type: choice
         default: 'all'
         options:
           - all
-          - citizen
+          - citizen-uip
           - citizen-ashta
-          - official
+          - official-uip
           - official-ashta
       api_base_url:
         description: 'Backend API Base URL'
@@ -43,38 +43,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  define-matrix:
+    name: Prepare Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          APP_CHOICE="${{ github.event.inputs.app_variant || 'all' }}"
+          if [ "$APP_CHOICE" = "citizen-uip" ]; then
+            JSON='[{"app":"citizen","script":"build-citizen-apk.js","region":"uip","apk":"nagarseva-citizen.apk","aab":"nagarseva-citizen.aab"}]'
+          elif [ "$APP_CHOICE" = "citizen-ashta" ]; then
+            JSON='[{"app":"citizen-ashta","script":"build-citizen-apk.js","region":"ashta","apk":"nagarseva-citizen-ashta.apk","aab":"nagarseva-citizen-ashta.aab"}]'
+          elif [ "$APP_CHOICE" = "official-uip" ]; then
+            JSON='[{"app":"official","script":"build-official-apk.js","region":"uip","apk":"nagarseva-official.apk","aab":"nagarseva-official.aab"}]'
+          elif [ "$APP_CHOICE" = "official-ashta" ]; then
+            JSON='[{"app":"official-ashta","script":"build-official-apk.js","region":"ashta","apk":"nagarseva-official-ashta.apk","aab":"nagarseva-official-ashta.aab"}]'
+          else
+            JSON='[{"app":"citizen","script":"build-citizen-apk.js","region":"uip","apk":"nagarseva-citizen.apk","aab":"nagarseva-citizen.aab"},{"app":"citizen-ashta","script":"build-citizen-apk.js","region":"ashta","apk":"nagarseva-citizen-ashta.apk","aab":"nagarseva-citizen-ashta.aab"},{"app":"official","script":"build-official-apk.js","region":"uip","apk":"nagarseva-official.apk","aab":"nagarseva-official.aab"},{"app":"official-ashta","script":"build-official-apk.js","region":"ashta","apk":"nagarseva-official-ashta.apk","aab":"nagarseva-official-ashta.aab"}]'
+          fi
+          echo "matrix=$JSON" >> $GITHUB_OUTPUT
+
   build:
     name: Build ${{ matrix.app }} (${{ github.event.inputs.build_type }})
+    needs: define-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - app: citizen
-            script: build-citizen-apk.js
-            region: uip
-            apk: nagarseva-citizen.apk
-            aab: nagarseva-citizen.aab
-          - app: citizen-ashta
-            script: build-citizen-apk.js
-            region: ashta
-            apk: nagarseva-citizen-ashta.apk
-            aab: nagarseva-citizen-ashta.aab
-          - app: official
-            script: build-official-apk.js
-            region: uip
-            apk: nagarseva-official.apk
-            aab: nagarseva-official.aab
-          - app: official-ashta
-            script: build-official-apk.js
-            region: ashta
-            apk: nagarseva-official-ashta.apk
-            aab: nagarseva-official-ashta.aab
-
-    # Skip variants if a single specific app was selected in dispatch inputs
-    if: github.event.inputs.app == 'all' || github.event.inputs.app == matrix.app
-
+        include: ${{ fromJson(needs.define-matrix.outputs.matrix) }}
     defaults:
       run:
         shell: bash
@@ -188,4 +187,4 @@ jobs:
             --repo Semiqolon-Studio-1401/nagarseva-project \
             --clobber
 
-          echo "✅ Asset uploaded securely to private releases."
+          echo "✅ Asset uploaded securely to private repository releases."

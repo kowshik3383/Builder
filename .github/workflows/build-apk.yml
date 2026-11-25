@@ -22,7 +22,7 @@ on:
       api_base_url:
         description: 'Backend API Base URL'
         required: true
-        default: 'http://13.234.241.2/api'
+        default: 'https://api.nagar-seva.com/api'
         type: string
       build_type:
         description: 'Artifact format'

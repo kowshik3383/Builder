@@ -166,9 +166,14 @@ jobs:
           TAG_NAME="build-${{ github.run_number }}"
           
           if [ "${{ github.event.inputs.build_type }}" = "aab" ]; then
-            FILE_PATH="frontend/${{ matrix.aab }}"
+            FILE_PATH="${GITHUB_WORKSPACE}/frontend/${{ matrix.aab }}"
           else
-            FILE_PATH="frontend/${{ matrix.apk }}"
+            FILE_PATH="${GITHUB_WORKSPACE}/frontend/${{ matrix.apk }}"
+          fi
+
+          if [ ! -s "$FILE_PATH" ]; then
+            echo "::error::Expected build artifact is missing or empty: $(basename "$FILE_PATH")"
+            exit 1
           fi
 
           echo "Uploading $FILE_PATH to private repo Semiqolon-Studio-1401/nagarseva-project..."

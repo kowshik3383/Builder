@@ -187,9 +187,19 @@ jobs:
               --prerelease || true
           fi
 
-          # Upload artifact to the private release
-          gh release upload "$TAG_NAME" "$FILE_PATH" \
-            --repo Semiqolon-Studio-1401/nagarseva-project \
-            --clobber
-
-          echo "✅ Asset uploaded securely to private repository releases."
+          # Retry transient release upload failures without recompiling.
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$TAG_NAME" "$FILE_PATH" \
+              --repo Semiqolon-Studio-1401/nagarseva-project \
+              --clobber; then
+              echo "✅ Asset uploaded securely to private repository releases."
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              DELAY=$((10 * 2 ** (attempt - 1)))
+              echo "::warning::Upload attempt $attempt failed; retrying in ${DELAY}s."
+              sleep "$DELAY"
+            fi
+          done
+          echo "::error::Private release upload failed after five attempts."
+          exit 1
